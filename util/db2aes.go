@@ -37,6 +37,16 @@ var (
 		"0e0760259f0826d18eb6e22988804617",
 		"codeKey for encode db",
 	)
+	all = flag.Bool(
+		"all",
+		false,
+		"if output all db",
+	)
+	json = flag.Bool(
+		"json",
+		false,
+		"if output json file",
+	)
 )
 
 var headerMap = map[string]string{
@@ -95,19 +105,26 @@ func main() {
 
 	liteB, err := simple_util.JsonIndent(liteDb, "", "\t")
 	simple_util.CheckErr(err)
-	err = simple_util.Json2file(liteB, *prefix+".lite.json")
-	simple_util.CheckErr(err)
+	if *json {
+		err = simple_util.Json2file(liteB, *prefix+".lite.json")
+		simple_util.CheckErr(err)
+	}
 	liteF, err := os.Create(*prefix + ".lite.json.aes")
 	defer simple_util.DeferClose(liteF)
 	simple_util.CheckErr(err)
 	simple_util.Encode2File(liteF, liteB, []byte(*codeKey))
 
-	allB, err := simple_util.JsonIndent(allDb, "", "\t")
-	simple_util.CheckErr(err)
-	err = simple_util.Json2file(allB, *prefix+".all.json")
-	simple_util.CheckErr(err)
-	allF, err := os.Create(*prefix + ".all.json.aes")
-	defer simple_util.DeferClose(allF)
-	simple_util.CheckErr(err)
-	simple_util.Encode2File(allF, allB, []byte(*codeKey))
+	if *all {
+		allB, err := simple_util.JsonIndent(allDb, "", "\t")
+		simple_util.CheckErr(err)
+		if *json {
+			err = simple_util.Json2file(allB, *prefix+".all.json")
+			simple_util.CheckErr(err)
+		}
+		allF, err := os.Create(*prefix + ".all.json.aes")
+		defer simple_util.DeferClose(allF)
+		simple_util.CheckErr(err)
+		simple_util.Encode2File(allF, allB, []byte(*codeKey))
+	}
+
 }
