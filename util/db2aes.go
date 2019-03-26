@@ -32,6 +32,11 @@ var (
 		":",
 		"sep of keys",
 	)
+	codeKey = flag.String(
+		"codeKey",
+		"0e0760259f0826d18eb6e22988804617",
+		"codeKey for encode db",
+	)
 )
 
 var headerMap = map[string]string{
@@ -88,14 +93,21 @@ func main() {
 		liteDb[mainKey] = lite
 	}
 
-	alll, err := simple_util.JsonIndent(liteDb, "", "\t")
+	liteB, err := simple_util.JsonIndent(liteDb, "", "\t")
 	simple_util.CheckErr(err)
-	err = simple_util.Json2file(alll, *prefix+".lite.json")
+	err = simple_util.Json2file(liteB, *prefix+".lite.json")
 	simple_util.CheckErr(err)
+	liteF, err := os.Create(*prefix + ".lite.json.aes")
+	defer simple_util.DeferClose(liteF)
+	simple_util.CheckErr(err)
+	simple_util.Encode2File(liteF, liteB, []byte(*codeKey))
 
-	allb, err := simple_util.JsonIndent(allDb, "", "\t")
+	allB, err := simple_util.JsonIndent(allDb, "", "\t")
 	simple_util.CheckErr(err)
-	err = simple_util.Json2file(allb, *prefix+".all.json")
+	err = simple_util.Json2file(allB, *prefix+".all.json")
 	simple_util.CheckErr(err)
-
+	allF, err := os.Create(*prefix + ".all.json.aes")
+	defer simple_util.DeferClose(allF)
+	simple_util.CheckErr(err)
+	simple_util.Encode2File(allF, allB, []byte(*codeKey))
 }
