@@ -23,6 +23,7 @@ code2=0e0760259f0826d18eb6e22988804617
 cd util
 go build
 
+mkdir -p ../db
 # output to ../db/db.json.aes
 ./util -codeKey $code2 -excel /path/to/db.xlsx -prefix ../db/db
 
