@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/md5"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/liserjrqlxue/crypto/aes"
@@ -31,23 +32,25 @@ func main() {
 	flag.Parse()
 	if *usr == "" {
 		User, err := user.Current()
-		fmt.Printf("Gid\t\t%s\n", User.Gid)
-		fmt.Printf("Uid\t\t%s\n", User.Uid)
-		fmt.Printf("Name\t\t%s\n", User.Name)
-		fmt.Printf("HomeDir\t\t%s\n", User.HomeDir)
-		fmt.Printf("Username\t%s\n", User.Username)
 		simple_util.CheckErr(err)
 		*usr = User.Username
+		/*
+			fmt.Printf("Gid\t\t%s\n", User.Gid)
+			fmt.Printf("Uid\t\t%s\n", User.Uid)
+			fmt.Printf("Name\t\t%s\n", User.Name)
+			fmt.Printf("HomeDir\t\t%s\n", User.HomeDir)
+			fmt.Printf("Username\t%s\n", User.Username)
+		*/
 	}
 	fmt.Printf("Usr\t%s\n", *usr)
 	code3, err := AES.Encode([]byte(*usr), []byte(*code1))
 	simple_util.CheckErr(err)
 	fmt.Printf("Code1\t%s\n", *code1)
 	fmt.Printf("Code2\t%s\n", *code2)
-	fmt.Printf("Code3\t%x\n", []byte(code3))
 	md5sum := md5.Sum([]byte(code3))
-	fmt.Printf("md5sum\t%x\n", md5sum)
-	codeKey, err := AES.Encode([]byte(*code2), []byte(fmt.Sprintf("%x", md5sum)))
+	code3fix := hex.EncodeToString(md5sum[:])
+	fmt.Printf("Code3\t%s\n", code3fix)
+	codeKey, err := AES.Encode([]byte(*code2), []byte(code3fix))
 	simple_util.CheckErr(err)
 	fmt.Printf("codeKey\t%x\n", codeKey)
 }
