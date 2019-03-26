@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"github.com/liserjrqlxue/crypto/aes"
@@ -28,7 +30,7 @@ var (
 		"",
 		"input annotation tsv(.gz)",
 	)
-	code = flag.String(
+	codeKey = flag.String(
 		"code",
 		"",
 		"code key for decode",
@@ -40,13 +42,9 @@ var (
 	)
 	aes = flag.String(
 		"aes",
-		"",
+		dbPath+"final.20181229.fix.tsv.xlsx.lite.json.aes",
 		"db.aes",
 	)
-	json = flag.String(
-		"json",
-		dbPath+"final.20181229.fix.tsv.xlsx.lite.json",
-		"db.json")
 	prefix = flag.String(
 		"prefix",
 		"",
@@ -65,8 +63,6 @@ var (
 )
 
 var code1 = []byte("118b09d39a5d3ecd56f9bd4f351dd6d6")
-
-//var code2=[]byte("0e0760259f0826d18eb6e22988804617")
 
 var addHeader = []string{
 	"MutationID",
@@ -96,7 +92,7 @@ var addHeader = []string{
 
 func main() {
 	flag.Parse()
-	if *varAnnos == "" || *prefix == "" {
+	if *varAnnos == "" || *prefix == "" || *codeKey == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -116,19 +112,25 @@ func main() {
 	}
 
 	var db = make(map[string]map[string]string)
-	if *aes != "" {
-		// get code2 to decode db.aes to db
-		User, err := user.Current()
-		simple_util.CheckErr(err)
-		usr := User.Username
-		code3, err := AES.Encode([]byte(usr), code1)
-		simple_util.CheckErr(err)
-		code2, err := AES.Decode([]byte(*code), code3)
-		b := simple_util.File2Decode(*aes, code2)
-		db = simple_util.Json2MapMap(b)
-	} else {
-		db = simple_util.JsonFile2MapMap(*json)
-	}
+
+	// get code2 to decode db.aes to db
+	User, err := user.Current()
+	simple_util.CheckErr(err)
+	usr := User.Username
+	fmt.Printf("Username:\t%s\n", usr)
+	codeKeyByte, err := hex.DecodeString(*codeKey)
+	simple_util.CheckErr(err)
+	fmt.Printf("CodeKey:\t%x\n", codeKeyByte)
+
+	code3, err := AES.Encode([]byte(usr), code1)
+	simple_util.CheckErr(err)
+	md5sum := md5.Sum([]byte(code3))
+	code3fix := hex.EncodeToString(md5sum[:])
+
+	code2, err := AES.Decode(codeKeyByte, []byte(code3fix))
+	simple_util.CheckErr(err)
+	b := simple_util.File2Decode(*aes, []byte(code2))
+	db = simple_util.Json2MapMap(b)
 
 	var anno []map[string]string
 	var title []string
