@@ -159,6 +159,7 @@ func main() {
 			if skip {
 				continue
 			}
+			format(item)
 			var line []string
 			for _, k := range title {
 				line = append(line, item[k])
@@ -180,4 +181,18 @@ func main() {
 
 func escapeLF(str string) string {
 	return strings.Replace(str, "\n", "[n]", -1)
+}
+
+var (
+	chr    = regexp.MustCompile(`^chr`)
+	repeat = regexp.MustCompile(`dup|trf|;`)
+)
+
+func format(item map[string]string) {
+	item["#Chr"] = chr.ReplaceAllString(item["#chr"], "")
+	item["RepeatTag"] = repeat.ReplaceAllString(item["RepeatTag"], "")
+	if item["RepeatTag"] == "" {
+		item["RepeatTag"] = "."
+	}
+	item["Zygosity"] = strings.Split(item["Zygosity"], "-")[0]
 }
