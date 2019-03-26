@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/csv"
 	"flag"
+	"fmt"
 	"github.com/liserjrqlxue/crypto/aes"
 	"github.com/liserjrqlxue/simple-util"
-	"log"
+	"github.com/tealeg/xlsx"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -47,10 +47,16 @@ var (
 		"json",
 		dbPath+"final.20181229.fix.tsv.xlsx.lite.json",
 		"db.json")
-	output = flag.String(
-		"output",
+	prefix = flag.String(
+		"prefix",
 		"",
-		"output file")
+		"output prefix.[xlsx,tsv]",
+	)
+	sheetName = flag.String(
+		"sheetName",
+		"annotation",
+		"output sheetName",
+	)
 )
 
 var (
@@ -90,17 +96,18 @@ var addHeader = []string{
 
 func main() {
 	flag.Parse()
-	if *varAnnos == "" || *output == "" {
+	if *varAnnos == "" || *prefix == "" {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	file, err := os.Create(*output)
+	file, err := os.Create(*prefix + ".tsv")
 	simple_util.CheckErr(err)
 	defer simple_util.DeferClose(file)
 
-	w := csv.NewWriter(file)
-	w.Comma = '\t'
+	excel := xlsx.NewFile()
+	sheet, err := excel.AddSheet(*sheetName)
+	simple_util.CheckErr(err)
 
 	var inDb = make(map[string]bool)
 	tag := strings.Split(*database, "+")
@@ -132,7 +139,11 @@ func main() {
 		anno, title = simple_util.File2MapArray(*varAnnos, "\t", skip)
 	}
 
-	err = w.Write(append(title, addHeader...))
+	row := sheet.AddRow()
+	for _, str := range append(title, addHeader...) {
+		row.AddCell().SetString(str)
+	}
+	_, err = fmt.Fprintln(file, strings.Join(append(title, addHeader...), "\t"))
 	simple_util.CheckErr(err)
 	for _, item := range anno {
 		key := item["Transcript"] + ":" + item["cHGVS"]
@@ -155,12 +166,18 @@ func main() {
 			for _, k := range addHeader {
 				line = append(line, target[k])
 			}
-			err = w.Write(line)
+			row := sheet.AddRow()
+			for _, str := range line {
+				row.AddCell().SetString(str)
+			}
+			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
 			simple_util.CheckErr(err)
 		}
 	}
-	w.Flush()
-	if err := w.Error(); err != nil {
-		log.Fatal(err)
-	}
+	err = excel.Save(*prefix + ".xlsx")
+	simple_util.CheckErr(err)
+}
+
+func escapeLF(str string) string {
+	return strings.Replace(str, "\n", "[n]", -1)
 }
