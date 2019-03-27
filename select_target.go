@@ -37,7 +37,7 @@ var (
 	)
 	database = flag.String(
 		"database",
-		"P100+F8",
+		"PP100+F8",
 		"databases to use,join with '+'",
 	)
 	aes = flag.String(
