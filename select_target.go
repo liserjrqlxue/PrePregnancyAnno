@@ -155,13 +155,15 @@ func main() {
 	}
 	_, err = fmt.Fprintln(file, strings.Join(append(title, addHeader...), "\t"))
 	simple_util.CheckErr(err)
+
+	dbSep := ";"
 	for _, item := range anno {
 		key := item["Transcript"] + ":" + item["cHGVS"]
 		target, ok := db[key]
 		format(item)
 		var line []string
 		var skip = true
-		tags := strings.Split(target["Database"], "+")
+		tags := strings.Split(target["Database"], dbSep)
 		for _, t := range tags {
 			if inDb[t] {
 				skip = false
