@@ -37,12 +37,12 @@ var (
 	)
 	database = flag.String(
 		"database",
-		"",
+		"P100+F8",
 		"databases to use,join with '+'",
 	)
 	aes = flag.String(
 		"aes",
-		dbPath+"final.20181229.fix.tsv.xlsx.lite.json.aes",
+		dbPath+"db.lite.json.aes",
 		"db.aes",
 	)
 	prefix = flag.String(
@@ -54,6 +54,11 @@ var (
 		"sheetName",
 		"annotation",
 		"output sheetName",
+	)
+	all = flag.Bool(
+		"all",
+		false,
+		"if output all var",
 	)
 )
 
@@ -153,25 +158,24 @@ func main() {
 	for _, item := range anno {
 		key := item["Transcript"] + ":" + item["cHGVS"]
 		target, ok := db[key]
+		format(item)
+		var line []string
+		var skip = true
 		if ok {
 			tags := strings.Split(target["Database"], ";")
-			var skip = true
 			for _, t := range tags {
 				if inDb[t] {
 					skip = false
 				}
 			}
-			if skip {
-				continue
-			}
-			format(item)
-			var line []string
 			for _, k := range title {
 				line = append(line, item[k])
 			}
 			for _, k := range addHeader {
 				line = append(line, target[k])
 			}
+		}
+		if *all || (ok && !skip) {
 			row := sheet.AddRow()
 			for _, str := range line {
 				row.AddCell().SetString(str)
