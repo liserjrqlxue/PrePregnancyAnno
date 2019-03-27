@@ -161,20 +161,19 @@ func main() {
 		format(item)
 		var line []string
 		var skip = true
-		if ok {
-			tags := strings.Split(target["Database"], ";")
-			for _, t := range tags {
-				if inDb[t] {
-					skip = false
-				}
-			}
-			for _, k := range title {
-				line = append(line, item[k])
-			}
-			for _, k := range addHeader {
-				line = append(line, target[k])
+		tags := strings.Split(target["Database"], "+")
+		for _, t := range tags {
+			if inDb[t] {
+				skip = false
 			}
 		}
+		for _, k := range title {
+			line = append(line, item[k])
+		}
+		for _, k := range addHeader {
+			line = append(line, target[k])
+		}
+
 		if *all || (ok && !skip) {
 			row := sheet.AddRow()
 			for _, str := range line {
@@ -198,7 +197,7 @@ var (
 )
 
 func format(item map[string]string) {
-	item["#Chr"] = chr.ReplaceAllString(item["#chr"], "")
+	item["#Chr"] = chr.ReplaceAllString(item["#Chr"], "")
 	item["RepeatTag"] = repeat.ReplaceAllString(item["RepeatTag"], "")
 	if item["RepeatTag"] == "" {
 		item["RepeatTag"] = "."
