@@ -48,7 +48,7 @@ var (
 	prefix = flag.String(
 		"prefix",
 		"",
-		"output prefix.[xlsx,tsv]",
+		"output prefix.[xlsx,tsv], default is basename of -var",
 	)
 	sheetName = flag.String(
 		"sheetName",
@@ -92,9 +92,12 @@ var addHeader = []string{
 
 func main() {
 	flag.Parse()
-	if *varAnnos == "" || *prefix == "" || *codeKey == "" {
+	if *varAnnos == "" || *codeKey == "" {
 		flag.Usage()
 		os.Exit(1)
+	}
+	if *prefix == "" {
+		*prefix = *varAnnos
 	}
 
 	file, err := os.Create(*prefix + ".tsv")
