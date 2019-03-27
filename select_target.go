@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // os
@@ -96,6 +97,7 @@ var addHeader = []string{
 }
 
 func main() {
+	t0 := time.Now()
 	flag.Parse()
 	if *varAnnos == "" || *codeKey == "" {
 		flag.Usage()
@@ -187,6 +189,9 @@ func main() {
 	}
 	err = excel.Save(*prefix + ".xlsx")
 	simple_util.CheckErr(err)
+	fmt.Printf("Output tsv:\t%s\n,", *prefix+".tsv")
+	fmt.Printf("Output excel:\t%s\n", *prefix+".xlsx")
+	fmt.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
 }
 
 func escapeLF(str string) string {
