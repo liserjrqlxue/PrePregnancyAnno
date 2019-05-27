@@ -31,6 +31,10 @@ var (
 		"",
 		"input annotation tsv(.gz)",
 	)
+	username = flag.String(
+		"usr",
+		"",
+		"username for -codeKey,default is user.Current().Username")
 	codeKey = flag.String(
 		"code",
 		"",
@@ -124,15 +128,17 @@ func main() {
 	var db = make(map[string]map[string]string)
 
 	// get code2 to decode db.aes to db
-	User, err := user.Current()
-	simple_util.CheckErr(err)
-	usr := User.Username
-	fmt.Printf("Username:\t%s\n", usr)
+	if *username == "" {
+		User, err := user.Current()
+		simple_util.CheckErr(err)
+		*username = User.Username
+	}
+	fmt.Printf("Username:\t%s\n", *username)
 	codeKeyByte, err := hex.DecodeString(*codeKey)
 	simple_util.CheckErr(err)
 	fmt.Printf("CodeKey:\t%x\n", codeKeyByte)
 
-	code3, err := AES.Encode([]byte(usr), code1)
+	code3, err := AES.Encode([]byte(*username), code1)
 	simple_util.CheckErr(err)
 	md5sum := md5.Sum([]byte(code3))
 	code3fix := hex.EncodeToString(md5sum[:])
