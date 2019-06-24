@@ -231,11 +231,11 @@ func main() {
 		}
 
 		if *all {
-			row := sheet.AddRow()
+			row := allSheet.AddRow()
 			for _, str := range line {
 				row.AddCell().SetString(str)
 			}
-			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
+			_, err = fmt.Fprintln(allFile, escapeLF(strings.Join(line, "\t")))
 			simple_util.CheckErr(err)
 		}
 		if ok && !skip {
