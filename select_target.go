@@ -8,10 +8,12 @@ import (
 	"github.com/liserjrqlxue/crypto/aes"
 	"github.com/liserjrqlxue/simple-util"
 	"github.com/tealeg/xlsx"
+	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -65,6 +67,11 @@ var (
 		false,
 		"if output all var",
 	)
+	outside = flag.Bool(
+		"outside",
+		false,
+		"if output outside var",
+	)
 )
 
 var (
@@ -73,6 +80,7 @@ var (
 )
 
 var code1 = []byte("118b09d39a5d3ecd56f9bd4f351dd6d6")
+var code2, code3, codeKeyByte []byte
 
 var addHeader = []string{
 	"MutationID",
@@ -100,6 +108,11 @@ var addHeader = []string{
 	"Database",
 }
 
+var file, allFile, outsideFile *os.File
+var sheet, allSheet, outsideSheet *xlsx.Sheet
+
+var err error
+
 func main() {
 	t0 := time.Now()
 	flag.Parse()
@@ -110,14 +123,6 @@ func main() {
 	if *prefix == "" {
 		*prefix = *varAnnos
 	}
-
-	file, err := os.Create(*prefix + ".tsv")
-	simple_util.CheckErr(err)
-	defer simple_util.DeferClose(file)
-
-	excel := xlsx.NewFile()
-	sheet, err := excel.AddSheet(*sheetName)
-	simple_util.CheckErr(err)
 
 	var inDb = make(map[string]bool)
 	tag := strings.Split(*database, "+")
@@ -133,17 +138,17 @@ func main() {
 		simple_util.CheckErr(err)
 		*username = User.Username
 	}
-	fmt.Printf("Username:\t%s\n", *username)
-	codeKeyByte, err := hex.DecodeString(*codeKey)
+	log.Printf("Username:\t%s\n", *username)
+	codeKeyByte, err = hex.DecodeString(*codeKey)
 	simple_util.CheckErr(err)
-	fmt.Printf("CodeKey:\t%x\n", codeKeyByte)
+	log.Printf("CodeKey:\t%x\n", codeKeyByte)
 
-	code3, err := AES.Encode([]byte(*username), code1)
+	code3, err = AES.Encode([]byte(*username), code1)
 	simple_util.CheckErr(err)
 	md5sum := md5.Sum([]byte(code3))
 	code3fix := hex.EncodeToString(md5sum[:])
 
-	code2, err := AES.Decode(codeKeyByte, []byte(code3fix))
+	code2, err = AES.Decode(codeKeyByte, []byte(code3fix))
 	simple_util.CheckErr(err)
 	b := simple_util.File2Decode(*aes, []byte(code2))
 	db = simple_util.Json2MapMap(b)
@@ -157,6 +162,14 @@ func main() {
 		anno, title = simple_util.File2MapArray(*varAnnos, "\t", skip)
 	}
 
+	// output
+	file, err = os.Create(*prefix + ".tsv")
+	simple_util.CheckErr(err)
+	defer simple_util.DeferClose(file)
+
+	sheet, err = xlsx.NewFile().AddSheet(*sheetName)
+	simple_util.CheckErr(err)
+
 	row := sheet.AddRow()
 	for _, str := range append(title, addHeader...) {
 		row.AddCell().SetString(str)
@@ -164,11 +177,44 @@ func main() {
 	_, err = fmt.Fprintln(file, strings.Join(append(title, addHeader...), "\t"))
 	simple_util.CheckErr(err)
 
+	if *all {
+		allFile, err = os.Create(*prefix + ".all.tsv")
+		simple_util.CheckErr(err)
+		defer simple_util.DeferClose(allFile)
+
+		allSheet, err = xlsx.NewFile().AddSheet(*sheetName)
+		simple_util.CheckErr(err)
+
+		row := allSheet.AddRow()
+		for _, str := range append(title, addHeader...) {
+			row.AddCell().SetString(str)
+		}
+		_, err = fmt.Fprintln(allFile, strings.Join(append(title, addHeader...), "\t"))
+		simple_util.CheckErr(err)
+	}
+
+	if *outside {
+		outsideFile, err = os.Create(*prefix + ".outside.tsv")
+		simple_util.CheckErr(err)
+		defer simple_util.DeferClose(outsideFile)
+
+		outsideSheet, err = xlsx.NewFile().AddSheet(*sheetName)
+		simple_util.CheckErr(err)
+
+		row := outsideSheet.AddRow()
+		for _, str := range append(title, addHeader...) {
+			row.AddCell().SetString(str)
+		}
+		_, err = fmt.Fprintln(outsideFile, strings.Join(append(title, addHeader...), "\t"))
+		simple_util.CheckErr(err)
+	}
+
 	dbSep := ";"
 	for _, item := range anno {
 		key := item["Transcript"] + ":" + item["cHGVS"]
-		target, ok := db[key]
 		format(item)
+
+		target, ok := db[key]
 		var line []string
 		var skip = true
 		tags := strings.Split(target["Database"], dbSep)
@@ -184,7 +230,7 @@ func main() {
 			line = append(line, target[k])
 		}
 
-		if *all || (ok && !skip) {
+		if *all {
 			row := sheet.AddRow()
 			for _, str := range line {
 				row.AddCell().SetString(str)
@@ -192,12 +238,36 @@ func main() {
 			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
 			simple_util.CheckErr(err)
 		}
+		if ok && !skip {
+			row := sheet.AddRow()
+			for _, str := range line {
+				row.AddCell().SetString(str)
+			}
+			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
+			simple_util.CheckErr(err)
+		} else if *outside && outsideCheck(item) {
+			row := outsideSheet.AddRow()
+			for _, str := range line {
+				row.AddCell().SetString(str)
+			}
+			_, err = fmt.Fprintln(outsideFile, escapeLF(strings.Join(line, "\t")))
+			simple_util.CheckErr(err)
+		}
 	}
-	err = excel.Save(*prefix + ".xlsx")
-	simple_util.CheckErr(err)
-	fmt.Printf("Output tsv:\t%s\n", *prefix+".tsv")
-	fmt.Printf("Output excel:\t%s\n", *prefix+".xlsx")
-	fmt.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
+	simple_util.CheckErr(sheet.File.Save(*prefix + ".xlsx"))
+	log.Printf("Output tsv:\t%s\n", *prefix+".tsv")
+	log.Printf("Output excel:\t%s\n", *prefix+".xlsx")
+	if *all {
+		simple_util.CheckErr(allSheet.File.Save(*prefix + ".all.xlsx"))
+		log.Printf("Output tsv:\t%s\n", *prefix+".all.tsv")
+		log.Printf("Output excel:\t%s\n", *prefix+".all.xlsx")
+	}
+	if *outside {
+		simple_util.CheckErr(outsideSheet.File.Save(*prefix + ".outside.xlsx"))
+		log.Printf("Output tsv:\t%s\n", *prefix+".outside.tsv")
+		log.Printf("Output excel:\t%s\n", *prefix+".outside.xlsx")
+	}
+	log.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
 }
 
 func escapeLF(str string) string {
@@ -216,4 +286,67 @@ func format(item map[string]string) {
 		item["RepeatTag"] = "."
 	}
 	item["Zygosity"] = strings.Split(item["Zygosity"], "-")[0]
+}
+
+// Tier1 >1
+// LoF 3
+var FuncInfo = map[string]int{
+	"splice-3":     3,
+	"splice-5":     3,
+	"init-loss":    3,
+	"alt-start":    3,
+	"frameshift":   3,
+	"nonsense":     3,
+	"stop-gain":    3,
+	"span":         3,
+	"missense":     2,
+	"cds-del":      2,
+	"cds-indel":    2,
+	"cds-ins":      2,
+	"splice-10":    2,
+	"splice+10":    2,
+	"coding-synon": 1,
+	"splice-20":    1,
+	"splice+20":    1,
+}
+
+var AFlist = []string{
+	"ESP6500 AF",
+	"1000G AF",
+	"ExAC EAS AF",
+	"ExAC AF",
+	"GnomAD EAS AF",
+	"GnomAD AF",
+}
+var threshold = 0.01
+
+func outsideCheck(item map[string]string) bool {
+	if FuncInfo[item["Function"]] < 3 {
+		return false
+	}
+	if CheckAFAllLowThen(item, AFlist, threshold, true) {
+		return true
+	}
+	return false
+}
+
+func CheckAFAllLowThen(item map[string]string, AFlist []string, threshold float64, includeEqual bool) bool {
+	for _, key := range AFlist {
+		af := item[key]
+		if af == "" || af == "." || af == "0" {
+			continue
+		}
+		AF, err := strconv.ParseFloat(af, 64)
+		simple_util.CheckErr(err)
+		if includeEqual {
+			if AF > threshold {
+				return false
+			}
+		} else {
+			if AF >= threshold {
+				return false
+			}
+		}
+	}
+	return true
 }
