@@ -245,7 +245,8 @@ func main() {
 			}
 			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
 			simple_util.CheckErr(err)
-		} else if *outside && outsideCheck(item) {
+		}
+		if *outside && !ok && outsideCheck(item) {
 			row := outsideSheet.AddRow()
 			for _, str := range line {
 				row.AddCell().SetString(str)
