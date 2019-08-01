@@ -52,6 +52,11 @@ var (
 		dbPath+"db.lite.json.aes",
 		"db.aes",
 	)
+	officialReportList = flag.String(
+		"orl",
+		dbPath+"OfficialReport.list",
+		"official report mutation list",
+	)
 	prefix = flag.String(
 		"prefix",
 		"",
@@ -124,6 +129,10 @@ func main() {
 		*prefix = *varAnnos
 	}
 
+	// load ORL
+	orl := simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
+	officialReport := createReport("OfficialReport", *sheetName, *prefix)
+
 	var inDb = make(map[string]bool)
 	tag := strings.Split(*database, "+")
 	for _, k := range tag {
@@ -161,6 +170,9 @@ func main() {
 	} else {
 		anno, title = simple_util.File2MapArray(*varAnnos, "\t", skip)
 	}
+
+	var header = append(title, addHeader...)
+	officialReport.addArray(header)
 
 	// output
 	file, err = os.Create(*prefix + ".tsv")
@@ -238,13 +250,19 @@ func main() {
 			_, err = fmt.Fprintln(allFile, escapeLF(strings.Join(line, "\t")))
 			simple_util.CheckErr(err)
 		}
-		if ok && !skip {
-			row := sheet.AddRow()
-			for _, str := range line {
-				row.AddCell().SetString(str)
+		if ok {
+			if !skip {
+				row := sheet.AddRow()
+				for _, str := range line {
+					row.AddCell().SetString(str)
+				}
+				_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
+				simple_util.CheckErr(err)
 			}
-			_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
-			simple_util.CheckErr(err)
+			_, inORL := orl[key]
+			if inORL {
+				officialReport.addArray(line)
+			}
 		}
 		if *outside && !ok && outsideCheck(item) {
 			row := outsideSheet.AddRow()
@@ -255,6 +273,8 @@ func main() {
 			simple_util.CheckErr(err)
 		}
 	}
+	officialReport.save()
+
 	simple_util.CheckErr(sheet.File.Save(*prefix + ".xlsx"))
 	log.Printf("Output tsv:\t%s\n", *prefix+".tsv")
 	log.Printf("Output excel:\t%s\n", *prefix+".xlsx")
