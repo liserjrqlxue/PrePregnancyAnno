@@ -6,13 +6,11 @@ import (
 	"flag"
 	"github.com/liserjrqlxue/crypto/aes"
 	"github.com/liserjrqlxue/simple-util"
-	"github.com/tealeg/xlsx"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -21,8 +19,7 @@ import (
 var (
 	ex, _  = os.Executable()
 	exPath = filepath.Dir(ex)
-	pSep   = string(os.PathSeparator)
-	dbPath = exPath + pSep + "db" + pSep
+	dbPath = filepath.Join(exPath, "db")
 )
 
 // flag
@@ -48,28 +45,43 @@ var (
 	)
 	aes = flag.String(
 		"aes",
-		dbPath+"db.lite.json.aes",
+		filepath.Join(dbPath, "db.lite.json.aes"),
 		"db.aes",
 	)
 	alleleFrequencyList = flag.String(
 		"afl",
-		dbPath+"AF.list",
+		filepath.Join(dbPath, "AF.list"),
 		"allele frequency list for checkout outside variants",
+	)
+	alleleFrequencyThreshold = flag.Float64(
+		"aft",
+		0.01,
+		"allele frequency threshold for checkout outside variants",
+	)
+	LoFList = flag.String(
+		"lof",
+		filepath.Join(dbPath, "LoF.list"),
+		"LoF list for checkout outside variiants",
 	)
 	officialReportList = flag.String(
 		"orl",
-		dbPath+"OfficialReport.list",
+		filepath.Join(dbPath, "OfficialReport.list"),
 		"official report mutation list",
 	)
 	PP100GeneList = flag.String(
 		"PP100",
-		dbPath+"PP100.gene.list",
+		filepath.Join(dbPath, "PP100.gene.list"),
 		"Supplementary Report PP100 gene list",
 	)
 	PP10GeneList = flag.String(
 		"PP10",
-		dbPath+"PP10.gene.list",
+		filepath.Join(dbPath, "PP10.gene.list"),
 		"Supplementary Report PP10 gene list",
+	)
+	extraColumnList = flag.String(
+		"extraCols",
+		filepath.Join(dbPath, "extraColumn.list"),
+		"extra columns add to annotation output",
 	)
 	prefix = flag.String(
 		"prefix",
@@ -101,35 +113,6 @@ var (
 var code1 = []byte("118b09d39a5d3ecd56f9bd4f351dd6d6")
 var code2, code3, codeKeyByte []byte
 
-var addHeader = []string{
-	"MutationID",
-	"ClinVar Significance",
-	"dbscSNV_ADA_SCORE",
-	"dbscSNV_RF_SCORE",
-	"GERP++_RS",
-	"GWASdb_or",
-	"SIFT Pred",
-	"Polyphen2 HDIV Pred",
-	"Polyphen2 HVAR Pred",
-	"MutationTaster Pred",
-	"PP_disGroup",
-	"Chinese desease name",
-	"Inheritance",
-	"Chinese mutation information",
-	"Chinese desease introduction",
-	"English desease name",
-	"English mutation information",
-	"English desease introduction",
-	"Evidence New + Check",
-	"Auto ACMG + Check",
-	"Reference-final",
-	"Reference-final-Info",
-	"Database",
-}
-
-var file, outsideFile *os.File
-var sheet, outsideSheet *xlsx.Sheet
-
 var officialReport *Report
 var PP100Report *Report
 var PP100OutsideReport *Report
@@ -140,7 +123,8 @@ var standardReport *Report
 var outsideReport *Report
 
 var orl map[string]map[string]string
-var AFlist []string
+var AFList []string
+var LoF = make(map[string]bool)
 var PP10 = make(map[string]bool)
 var PP100 = make(map[string]bool)
 
@@ -161,7 +145,12 @@ func main() {
 	// load ORL
 	orl = simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
 
-	AFlist = simple_util.File2Array(*alleleFrequencyList)
+	AFList = simple_util.File2Array(*alleleFrequencyList)
+
+	LoFArray := simple_util.File2Array(*LoFList)
+	for _, function := range LoFArray {
+		LoF[function] = true
+	}
 
 	PP100Gene := simple_util.File2Array(*PP100GeneList)
 	for _, gene := range PP100Gene {
@@ -177,6 +166,8 @@ func main() {
 	for _, k := range tag {
 		inDb[k] = true
 	}
+
+	var extraCols = simple_util.File2Array(*extraColumnList)
 
 	var db = make(map[string]map[string]string)
 
@@ -210,7 +201,7 @@ func main() {
 		anno, title = simple_util.File2MapArray(*varAnnos, "\t", skip)
 	}
 
-	var header = append(title, addHeader...)
+	var header = append(title, extraCols...)
 
 	// create Report
 	officialReport = createReport("OfficialReport", *sheetName, *prefix)
@@ -254,8 +245,13 @@ func main() {
 		for _, k := range title {
 			line = append(line, item[k])
 		}
-		for _, k := range addHeader {
+		for _, k := range extraCols {
 			line = append(line, target[k])
+		}
+
+		var isOutside bool
+		if !ok && LoF[item["Function"]] && simple_util.CheckAFAllLowThen(item, AFList, *alleleFrequencyThreshold, true) {
+			isOutside = true
 		}
 
 		_, inORL := orl[key]
@@ -265,14 +261,14 @@ func main() {
 		if PP100[gene] {
 			if ok {
 				PP100Report.addArray(line)
-			} else {
+			} else if isOutside {
 				PP100OutsideReport.addArray(line)
 			}
 		}
 		if PP10[gene] {
 			if ok {
 				PP10Report.addArray(line)
-			} else {
+			} else if isOutside {
 				PP10OutsideReport.addArray(line)
 			}
 		}
@@ -293,7 +289,7 @@ func main() {
 				standardReport.addArray(line)
 			}
 		} else {
-			if *outside && outsideCheck(item) {
+			if *outside && isOutside {
 				outsideReport.addArray(line)
 			}
 		}
@@ -329,59 +325,4 @@ func format(item map[string]string) {
 		item["RepeatTag"] = "."
 	}
 	item["Zygosity"] = strings.Split(item["Zygosity"], "-")[0]
-}
-
-// Tier1 >1
-// LoF 3
-var FuncInfo = map[string]int{
-	"splice-3":     3,
-	"splice-5":     3,
-	"init-loss":    3,
-	"alt-start":    3,
-	"frameshift":   3,
-	"nonsense":     3,
-	"stop-gain":    3,
-	"span":         3,
-	"missense":     2,
-	"cds-del":      2,
-	"cds-indel":    2,
-	"cds-ins":      2,
-	"splice-10":    2,
-	"splice+10":    2,
-	"coding-synon": 1,
-	"splice-20":    1,
-	"splice+20":    1,
-}
-
-var threshold = 0.01
-
-func outsideCheck(item map[string]string) bool {
-	if FuncInfo[item["Function"]] < 3 {
-		return false
-	}
-	if CheckAFAllLowThen(item, AFlist, threshold, true) {
-		return true
-	}
-	return false
-}
-
-func CheckAFAllLowThen(item map[string]string, AFlist []string, threshold float64, includeEqual bool) bool {
-	for _, key := range AFlist {
-		af := item[key]
-		if af == "" || af == "." || af == "0" {
-			continue
-		}
-		AF, err := strconv.ParseFloat(af, 64)
-		simple_util.CheckErr(err)
-		if includeEqual {
-			if AF > threshold {
-				return false
-			}
-		} else {
-			if AF >= threshold {
-				return false
-			}
-		}
-	}
-	return true
 }
