@@ -113,14 +113,8 @@ var (
 var code1 = []byte("118b09d39a5d3ecd56f9bd4f351dd6d6")
 var code2, code3, codeKeyByte []byte
 
-var officialReport *Report
-var PP100Report *Report
-var PP100OutsideReport *Report
-var PP10Report *Report
-var PP10OutsideReport *Report
-var allReport *Report
-var standardReport *Report
-var outsideReport *Report
+var reportArray []string
+var reportMap = make(map[string]*Report)
 
 var orl map[string]map[string]string
 var AFList []string
@@ -204,34 +198,25 @@ func main() {
 	var header = append(title, extraCols...)
 
 	// create Report
-	officialReport = createReport("OfficialReport", *sheetName, *prefix)
-	officialReport.addArray(header)
-	officialReport.count--
-	PP100Report = createReport("PP100", *sheetName, *prefix)
-	PP100Report.addArray(header)
-	PP100Report.count--
-	PP100OutsideReport = createReport("PP100.Outside", *sheetName, *prefix)
-	PP100OutsideReport.addArray(header)
-	PP100OutsideReport.count--
-	PP10Report = createReport("PP10", *sheetName, *prefix)
-	PP10Report.addArray(header)
-	PP10Report.count--
-	PP10OutsideReport = createReport("PP10.Outside", *sheetName, *prefix)
-	PP10OutsideReport.addArray(header)
-	PP10OutsideReport.count--
-
-	standardReport = createReport("Standard", *sheetName, *prefix)
-	standardReport.addArray(header)
-	standardReport.count--
-	if *all {
-		allReport = createReport("all", *sheetName, *prefix)
-		allReport.addArray(header)
-		allReport.count--
+	for _, tag := range []string{"OfficialReport", "PP100", "PP100.Outside", "PP10", "PP10.Outside", "Standard"} {
+		reportMap[tag] = createReport(tag, *sheetName, *prefix)
+		reportMap[tag].addArray(header)
+		reportMap[tag].count--
+		reportArray = append(reportArray, tag)
 	}
 	if *outside {
-		outsideReport = createReport("Outside", *sheetName, *prefix)
-		outsideReport.addArray(header)
-		outsideReport.count--
+		tag := "Outside"
+		reportMap[tag] = createReport(tag, *sheetName, *prefix)
+		reportMap[tag].addArray(header)
+		reportMap[tag].count--
+		reportArray = append(reportArray, tag)
+	}
+	if *all {
+		tag := "all"
+		reportMap[tag] = createReport(tag, *sheetName, *prefix)
+		reportMap[tag].addArray(header)
+		reportMap[tag].count--
+		reportArray = append(reportArray, tag)
 	}
 
 	dbSep := ";"
@@ -256,24 +241,24 @@ func main() {
 
 		_, inORL := orl[key]
 		if inORL {
-			officialReport.addArray(line)
+			reportMap["OfficialReport"].addArray(line)
 		}
 		if PP100[gene] {
 			if ok {
-				PP100Report.addArray(line)
+				reportMap["PP100"].addArray(line)
 			} else if isOutside {
-				PP100OutsideReport.addArray(line)
+				reportMap["PP100.Outside"].addArray(line)
 			}
 		}
 		if PP10[gene] {
 			if ok {
-				PP10Report.addArray(line)
+				reportMap["PP10"].addArray(line)
 			} else if isOutside {
-				PP10OutsideReport.addArray(line)
+				reportMap["PP10.Outside"].addArray(line)
 			}
 		}
 		if *all {
-			allReport.addArray(line)
+			reportMap["all"].addArray(line)
 		}
 
 		// check if in given db
@@ -286,28 +271,18 @@ func main() {
 		}
 		if ok {
 			if !skip {
-				standardReport.addArray(line)
+				reportMap["Standard"].addArray(line)
 			}
 		} else {
 			if *outside && isOutside {
-				outsideReport.addArray(line)
+				reportMap["Outside"].addArray(line)
 			}
 		}
 	}
 
 	// save report
-	officialReport.save()
-	PP100Report.save()
-	PP100OutsideReport.save()
-	PP10Report.save()
-	PP10OutsideReport.save()
-
-	standardReport.save()
-	if *all {
-		allReport.save()
-	}
-	if *outside {
-		outsideReport.save()
+	for _, tag := range reportArray {
+		reportMap[tag].save()
 	}
 
 	log.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
