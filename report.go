@@ -16,6 +16,7 @@ type Report struct {
 	sheetName   string
 	row         *xlsx.Row
 	err         error
+	count       int64
 }
 
 func (report *Report) checkError(msg ...string) {
@@ -29,12 +30,13 @@ func (report *Report) addArray(array []string) {
 	}
 	_, report.err = fmt.Fprintln(report.Tsv, escapeLF(strings.Join(array, "\t")))
 	report.checkError()
+	report.count++
 }
 
 func (report *Report) save() {
 	simple_util.CheckErr(report.Tsv.Close())
 	simple_util.CheckErr(report.Sheet.File.Save(report.Prefix + ".xlsx"))
-	log.Printf("output %s:\n\t[%s.tsv]\n\t[%s.xlsx]\n", report.Tag, report.Prefix, report.Prefix)
+	log.Printf("output %s:%d records\n\t[%s.tsv]\n\t[%s.xlsx]\n", report.Tag, report.count, report.Prefix, report.Prefix)
 }
 
 func createReport(tag, sheetName, prefix string) (report *Report) {
@@ -48,4 +50,8 @@ func createReport(tag, sheetName, prefix string) (report *Report) {
 	report.Sheet, report.err = xlsx.NewFile().AddSheet(report.sheetName)
 	report.checkError()
 	return
+}
+
+func escapeLF(str string) string {
+	return strings.Replace(str, "\n", "[n]", -1)
 }

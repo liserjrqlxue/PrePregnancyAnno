@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"flag"
-	"fmt"
 	"github.com/liserjrqlxue/crypto/aes"
 	"github.com/liserjrqlxue/simple-util"
 	"github.com/tealeg/xlsx"
@@ -45,17 +44,32 @@ var (
 	database = flag.String(
 		"database",
 		"PP100+F8",
-		"databases to use,join with '+'",
+		"databases to use for StandardReport,join with '+'",
 	)
 	aes = flag.String(
 		"aes",
 		dbPath+"db.lite.json.aes",
 		"db.aes",
 	)
+	alleleFrequencyList = flag.String(
+		"afl",
+		dbPath+"AF.list",
+		"allele frequency list for checkout outside variants",
+	)
 	officialReportList = flag.String(
 		"orl",
 		dbPath+"OfficialReport.list",
 		"official report mutation list",
+	)
+	PP100GeneList = flag.String(
+		"PP100",
+		dbPath+"PP100.gene.list",
+		"Supplementary Report PP100 gene list",
+	)
+	PP10GeneList = flag.String(
+		"PP10",
+		dbPath+"PP10.gene.list",
+		"Supplementary Report PP10 gene list",
 	)
 	prefix = flag.String(
 		"prefix",
@@ -75,7 +89,7 @@ var (
 	outside = flag.Bool(
 		"outside",
 		false,
-		"if output outside var",
+		"if output OutsideReport",
 	)
 )
 
@@ -113,8 +127,22 @@ var addHeader = []string{
 	"Database",
 }
 
-var file, allFile, outsideFile *os.File
-var sheet, allSheet, outsideSheet *xlsx.Sheet
+var file, outsideFile *os.File
+var sheet, outsideSheet *xlsx.Sheet
+
+var officialReport *Report
+var PP100Report *Report
+var PP100OutsideReport *Report
+var PP10Report *Report
+var PP10OutsideReport *Report
+var allReport *Report
+var standardReport *Report
+var outsideReport *Report
+
+var orl map[string]map[string]string
+var AFlist []string
+var PP10 = make(map[string]bool)
+var PP100 = make(map[string]bool)
 
 var err error
 
@@ -129,9 +157,20 @@ func main() {
 		*prefix = *varAnnos
 	}
 
+	// parser config
 	// load ORL
-	orl := simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
-	officialReport := createReport("OfficialReport", *sheetName, *prefix)
+	orl = simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
+
+	AFlist = simple_util.File2Array(*alleleFrequencyList)
+
+	PP100Gene := simple_util.File2Array(*PP100GeneList)
+	for _, gene := range PP100Gene {
+		PP100[gene] = true
+	}
+	PP10Gene := simple_util.File2Array(*PP10GeneList)
+	for _, gene := range PP10Gene {
+		PP10[gene] = true
+	}
 
 	var inDb = make(map[string]bool)
 	tag := strings.Split(*database, "+")
@@ -172,69 +211,46 @@ func main() {
 	}
 
 	var header = append(title, addHeader...)
+
+	// create Report
+	officialReport = createReport("OfficialReport", *sheetName, *prefix)
 	officialReport.addArray(header)
+	officialReport.count--
+	PP100Report = createReport("PP100", *sheetName, *prefix)
+	PP100Report.addArray(header)
+	PP100Report.count--
+	PP100OutsideReport = createReport("PP100.Outside", *sheetName, *prefix)
+	PP100OutsideReport.addArray(header)
+	PP100OutsideReport.count--
+	PP10Report = createReport("PP10", *sheetName, *prefix)
+	PP10Report.addArray(header)
+	PP10Report.count--
+	PP10OutsideReport = createReport("PP10.Outside", *sheetName, *prefix)
+	PP10OutsideReport.addArray(header)
+	PP10OutsideReport.count--
 
-	// output
-	file, err = os.Create(*prefix + ".tsv")
-	simple_util.CheckErr(err)
-	defer simple_util.DeferClose(file)
-
-	sheet, err = xlsx.NewFile().AddSheet(*sheetName)
-	simple_util.CheckErr(err)
-
-	row := sheet.AddRow()
-	for _, str := range append(title, addHeader...) {
-		row.AddCell().SetString(str)
-	}
-	_, err = fmt.Fprintln(file, strings.Join(append(title, addHeader...), "\t"))
-	simple_util.CheckErr(err)
-
+	standardReport = createReport("Standard", *sheetName, *prefix)
+	standardReport.addArray(header)
+	standardReport.count--
 	if *all {
-		allFile, err = os.Create(*prefix + ".all.tsv")
-		simple_util.CheckErr(err)
-		defer simple_util.DeferClose(allFile)
-
-		allSheet, err = xlsx.NewFile().AddSheet(*sheetName)
-		simple_util.CheckErr(err)
-
-		row := allSheet.AddRow()
-		for _, str := range append(title, addHeader...) {
-			row.AddCell().SetString(str)
-		}
-		_, err = fmt.Fprintln(allFile, strings.Join(append(title, addHeader...), "\t"))
-		simple_util.CheckErr(err)
+		allReport = createReport("all", *sheetName, *prefix)
+		allReport.addArray(header)
+		allReport.count--
 	}
-
 	if *outside {
-		outsideFile, err = os.Create(*prefix + ".outside.tsv")
-		simple_util.CheckErr(err)
-		defer simple_util.DeferClose(outsideFile)
-
-		outsideSheet, err = xlsx.NewFile().AddSheet(*sheetName)
-		simple_util.CheckErr(err)
-
-		row := outsideSheet.AddRow()
-		for _, str := range append(title, addHeader...) {
-			row.AddCell().SetString(str)
-		}
-		_, err = fmt.Fprintln(outsideFile, strings.Join(append(title, addHeader...), "\t"))
-		simple_util.CheckErr(err)
+		outsideReport = createReport("Outside", *sheetName, *prefix)
+		outsideReport.addArray(header)
+		outsideReport.count--
 	}
 
 	dbSep := ";"
 	for _, item := range anno {
+		gene := item["Gene Symbol"]
 		key := item["Transcript"] + ":" + item["cHGVS"]
 		format(item)
 
 		target, ok := db[key]
 		var line []string
-		var skip = true
-		tags := strings.Split(target["Database"], dbSep)
-		for _, t := range tags {
-			if inDb[t] {
-				skip = false
-			}
-		}
 		for _, k := range title {
 			line = append(line, item[k])
 		}
@@ -242,57 +258,63 @@ func main() {
 			line = append(line, target[k])
 		}
 
-		if *all {
-			row := allSheet.AddRow()
-			for _, str := range line {
-				row.AddCell().SetString(str)
+		_, inORL := orl[key]
+		if inORL {
+			officialReport.addArray(line)
+		}
+		if PP100[gene] {
+			if ok {
+				PP100Report.addArray(line)
+			} else {
+				PP100OutsideReport.addArray(line)
 			}
-			_, err = fmt.Fprintln(allFile, escapeLF(strings.Join(line, "\t")))
-			simple_util.CheckErr(err)
+		}
+		if PP10[gene] {
+			if ok {
+				PP10Report.addArray(line)
+			} else {
+				PP10OutsideReport.addArray(line)
+			}
+		}
+		if *all {
+			allReport.addArray(line)
+		}
+
+		// check if in given db
+		var skip = true
+		tags := strings.Split(target["Database"], dbSep)
+		for _, t := range tags {
+			if inDb[t] {
+				skip = false
+			}
 		}
 		if ok {
 			if !skip {
-				row := sheet.AddRow()
-				for _, str := range line {
-					row.AddCell().SetString(str)
-				}
-				_, err = fmt.Fprintln(file, escapeLF(strings.Join(line, "\t")))
-				simple_util.CheckErr(err)
+				standardReport.addArray(line)
 			}
-			_, inORL := orl[key]
-			if inORL {
-				officialReport.addArray(line)
+		} else {
+			if *outside && outsideCheck(item) {
+				outsideReport.addArray(line)
 			}
-		}
-		if *outside && !ok && outsideCheck(item) {
-			row := outsideSheet.AddRow()
-			for _, str := range line {
-				row.AddCell().SetString(str)
-			}
-			_, err = fmt.Fprintln(outsideFile, escapeLF(strings.Join(line, "\t")))
-			simple_util.CheckErr(err)
 		}
 	}
-	officialReport.save()
 
-	simple_util.CheckErr(sheet.File.Save(*prefix + ".xlsx"))
-	log.Printf("Output tsv:\t%s\n", *prefix+".tsv")
-	log.Printf("Output excel:\t%s\n", *prefix+".xlsx")
+	// save report
+	officialReport.save()
+	PP100Report.save()
+	PP100OutsideReport.save()
+	PP10Report.save()
+	PP10OutsideReport.save()
+
+	standardReport.save()
 	if *all {
-		simple_util.CheckErr(allSheet.File.Save(*prefix + ".all.xlsx"))
-		log.Printf("Output tsv:\t%s\n", *prefix+".all.tsv")
-		log.Printf("Output excel:\t%s\n", *prefix+".all.xlsx")
+		allReport.save()
 	}
 	if *outside {
-		simple_util.CheckErr(outsideSheet.File.Save(*prefix + ".outside.xlsx"))
-		log.Printf("Output tsv:\t%s\n", *prefix+".outside.tsv")
-		log.Printf("Output excel:\t%s\n", *prefix+".outside.xlsx")
+		outsideReport.save()
 	}
-	log.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
-}
 
-func escapeLF(str string) string {
-	return strings.Replace(str, "\n", "[n]", -1)
+	log.Printf("time elapsed:\t%s\n", time.Now().Sub(t0).String())
 }
 
 var (
@@ -331,14 +353,6 @@ var FuncInfo = map[string]int{
 	"splice+20":    1,
 }
 
-var AFlist = []string{
-	"ESP6500 AF",
-	"1000G AF",
-	"ExAC EAS AF",
-	"ExAC AF",
-	"GnomAD EAS AF",
-	"GnomAD AF",
-}
 var threshold = 0.01
 
 func outsideCheck(item map[string]string) bool {
