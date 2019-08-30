@@ -40,7 +40,7 @@ var (
 	)
 	database = flag.String(
 		"database",
-		"PP100+F8",
+		"PP159+F8",
 		"databases to use for StandardReport,join with '+'",
 	)
 	aes = flag.String(
@@ -68,10 +68,10 @@ var (
 		filepath.Join(dbPath, "OfficialReport.list"),
 		"official report mutation list",
 	)
-	PP100GeneList = flag.String(
-		"PP100",
-		filepath.Join(dbPath, "PP100.gene.list"),
-		"Supplementary Report PP100 gene list",
+	PP159GeneList = flag.String(
+		"PP159",
+		filepath.Join(dbPath, "PP159.gene.list"),
+		"Supplementary Report PP159 gene list",
 	)
 	PP10GeneList = flag.String(
 		"PP10",
@@ -120,7 +120,7 @@ var orl map[string]map[string]string
 var AFList []string
 var LoF = make(map[string]bool)
 var PP10 = make(map[string]bool)
-var PP100 = make(map[string]bool)
+var PP159 = make(map[string]bool)
 
 var err error
 
@@ -146,9 +146,9 @@ func main() {
 		LoF[function] = true
 	}
 
-	PP100Gene := simple_util.File2Array(*PP100GeneList)
-	for _, gene := range PP100Gene {
-		PP100[gene] = true
+	PP159Gene := simple_util.File2Array(*PP159GeneList)
+	for _, gene := range PP159Gene {
+		PP159[gene] = true
 	}
 	PP10Gene := simple_util.File2Array(*PP10GeneList)
 	for _, gene := range PP10Gene {
@@ -198,7 +198,7 @@ func main() {
 	var header = append(title, extraCols...)
 
 	// create Report
-	for _, tag := range []string{"OfficialReport", "PP100", "PP100.Outside", "PP10", "PP10.Outside", "Standard"} {
+	for _, tag := range []string{"OfficialReport", "PP159", "PP159.Outside", "PP10", "PP10.Outside", "Standard"} {
 		reportMap[tag] = createReport(tag, *sheetName, *prefix)
 		reportMap[tag].addArray(header)
 		reportMap[tag].count--
@@ -243,11 +243,11 @@ func main() {
 		if inORL {
 			reportMap["OfficialReport"].addArray(line)
 		}
-		if PP100[gene] {
+		if PP159[gene] {
 			if ok {
-				reportMap["PP100"].addArray(line)
+				reportMap["PP159"].addArray(line)
 			} else if isOutside {
-				reportMap["PP100.Outside"].addArray(line)
+				reportMap["PP159.Outside"].addArray(line)
 			}
 		}
 		if PP10[gene] {
