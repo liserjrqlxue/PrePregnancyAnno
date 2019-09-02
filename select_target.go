@@ -78,6 +78,11 @@ var (
 		filepath.Join(dbPath, "PP10.gene.list"),
 		"Supplementary Report PP10 gene list",
 	)
+	F8GeneList = flag.String(
+		"F8",
+		filepath.Join(dbPath, "F8.gene.list"),
+		"Supplementary Report F8 gene list",
+	)
 	extraColumnList = flag.String(
 		"extraCols",
 		filepath.Join(dbPath, "extraColumn.list"),
@@ -121,7 +126,12 @@ var AFList []string
 var LoF = make(map[string]bool)
 var PP10 = make(map[string]bool)
 var PP159 = make(map[string]bool)
-
+var F8 = make(map[string]bool)
+var LocalDb = map[string]map[string]bool{
+	"F8":    F8,
+	"PP10":  PP10,
+	"PP159": PP159,
+}
 var err error
 
 func main() {
@@ -154,11 +164,29 @@ func main() {
 	for _, gene := range PP10Gene {
 		PP10[gene] = true
 	}
+	F8Gene := simple_util.File2Array(*F8GeneList)
+	for _, gene := range F8Gene {
+		F8[gene] = true
+	}
 
+	if *database == "" {
+		log.Println("empty database")
+	}
+	var DataBaseGeneList = make(map[string]bool)
 	var inDb = make(map[string]bool)
 	tag := strings.Split(*database, "+")
 	for _, k := range tag {
 		inDb[k] = true
+		db, ok := LocalDb[k]
+		if ok {
+			for k, v := range db {
+				if v {
+					DataBaseGeneList[k] = v
+				}
+			}
+		} else {
+			log.Printf("can not parser database:[%s]", k)
+		}
 	}
 
 	var extraCols = simple_util.File2Array(*extraColumnList)
@@ -274,7 +302,7 @@ func main() {
 				reportMap["Standard"].addArray(line)
 			}
 		} else {
-			if *outside && isOutside {
+			if *outside && isOutside && DataBaseGeneList[gene] {
 				reportMap["Outside"].addArray(line)
 			}
 		}
