@@ -4,7 +4,15 @@ import (
 	"flag"
 	"github.com/liserjrqlxue/simple-util"
 	"os"
+	"path/filepath"
 	"strings"
+)
+
+// os
+var (
+	ex, _  = os.Executable()
+	exPath = filepath.Dir(ex)
+	dbPath = filepath.Join(exPath, "..", "db")
 )
 
 var (
@@ -47,33 +55,12 @@ var (
 		false,
 		"if output json file",
 	)
+	liteColumnList = flag.String(
+		"liteCols",
+		filepath.Join(dbPath, "extraColumn.list"),
+		"columns of lite db",
+	)
 )
-
-var headerMap = map[string]string{
-	"变异ID":                 "MutationID",
-	"ClinVar Significance": "ClinVar Significance",
-	"dbscSNV_ADA_SCORE":    "dbscSNV_ADA_SCORE",
-	"dbscSNV_RF_SCORE":     "dbscSNV_RF_SCORE",
-	"GERP++_RS":            "GERP++_RS",
-	"GWASdb_or":            "GWASdb_or",
-	"SIFT Pred":            "SIFT Pred",
-	"Polyphen2 HDIV Pred":  "Polyphen2 HDIV Pred",
-	"Polyphen2 HVAR Pred":  "Polyphen2 HVAR Pred",
-	"MutationTaster Pred":  "MutationTaster Pred",
-	"PP_disGroup":          "PP_disGroup",
-	"中文-疾病名称":              "Chinese desease name",
-	"遗传模式":                 "Inheritance",
-	"中文-突变详情":              "Chinese mutation information",
-	"中文-疾病简介":              "Chinese desease introduction",
-	"英文-疾病名称":              "English desease name",
-	"英文-突变详情":              "English mutation information",
-	"英文-疾病简介":              "English desease introduction",
-	"Evidence New + Check": "Evidence New + Check",
-	"Auto ACMG + Check":    "Auto ACMG + Check",
-	"Reference-final":      "Reference-final",
-	"Reference-final-Info": "Reference-final-Info",
-	"Database":             "Database",
-}
 
 func main() {
 	flag.Parse()
@@ -88,6 +75,7 @@ func main() {
 	_, db := simple_util.Sheet2MapArray(*excel, *sheet)
 	var allDb = make(map[string]map[string]string)
 	var liteDb = make(map[string]map[string]string)
+	var liteCols = simple_util.File2Array(*liteColumnList)
 
 	for _, item := range db {
 		var keyValues []string
@@ -97,8 +85,8 @@ func main() {
 		mainKey := strings.Join(keyValues, *sep)
 		allDb[mainKey] = item
 		var lite = make(map[string]string)
-		for k, v := range headerMap {
-			lite[v] = item[k]
+		for _, k := range liteCols {
+			lite[k] = item[k]
 		}
 		liteDb[mainKey] = lite
 	}

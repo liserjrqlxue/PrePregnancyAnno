@@ -219,8 +219,8 @@ func main() {
 
 	for key, item := range db {
 		transcript := strings.Split(key, ":")[0]
-		geneDiseaseCN[transcript] = item["Chinese desease name"]
-		geneDiseaseEN[transcript] = item["English desease name"]
+		geneDiseaseCN[transcript] = item["Chinese disease name"]
+		geneDiseaseEN[transcript] = item["English disease name"]
 	}
 
 	var anno []map[string]string

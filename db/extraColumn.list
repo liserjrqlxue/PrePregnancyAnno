@@ -1,4 +1,4 @@
-MutationID
+变异ID
 ClinVar Significance
 dbscSNV_ADA_SCORE
 dbscSNV_RF_SCORE
@@ -12,10 +12,10 @@ PP_disGroup
 Chinese desease name
 Inheritance
 Chinese mutation information
-Chinese desease introduction
-English desease name
+Chinese disease introduction
+English disease name
 English mutation information
-English desease introduction
+English disease introduction
 Evidence New + Check
 Auto ACMG + Check
 Reference-final
