@@ -134,6 +134,9 @@ var LocalDb = map[string]map[string]bool{
 }
 var err error
 
+var geneDiseaseCN = make(map[string]string)
+var geneDiseaseEN = make(map[string]string)
+
 func main() {
 	t0 := time.Now()
 	flag.Parse()
@@ -214,6 +217,12 @@ func main() {
 	b := simple_util.File2Decode(*aes, []byte(code2))
 	db = simple_util.Json2MapMap(b)
 
+	for key, item := range db {
+		transcript := strings.Split(key, ":")[0]
+		geneDiseaseCN[transcript] = item["Chinese desease name"]
+		geneDiseaseEN[transcript] = item["English desease name"]
+	}
+
 	var anno []map[string]string
 	var title []string
 
@@ -250,7 +259,8 @@ func main() {
 	dbSep := ";"
 	for _, item := range anno {
 		gene := item["Gene Symbol"]
-		key := item["Transcript"] + ":" + item["cHGVS"]
+		transcript := item["Transcript"]
+		key := transcript + ":" + item["cHGVS"]
 		format(item)
 
 		target, ok := db[key]
@@ -259,7 +269,13 @@ func main() {
 			line = append(line, item[k])
 		}
 		for _, k := range extraCols {
-			line = append(line, target[k])
+			if !ok && k == "Chinese disease name" {
+				line = append(line, geneDiseaseCN[transcript])
+			} else if !ok && k == "English disease name" {
+				line = append(line, geneDiseaseEN[transcript])
+			} else {
+				line = append(line, target[k])
+			}
 		}
 
 		var isOutside bool
