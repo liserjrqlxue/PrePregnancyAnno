@@ -108,6 +108,16 @@ var (
 		false,
 		"if output OutsideReport",
 	)
+	diseaseInfo = flag.String(
+		"diseaseInfo",
+		filepath.Join(dbPath, "孕150基因-疾病-发病率-干预list-20191126-V3.xlsx"),
+		"diseaseInfo from excel",
+	)
+	diseaseInfoSheet = flag.String(
+		"diseaseInfo",
+		"Sheet1",
+		"diseaseInfo sheet name",
+	)
 )
 
 var (
@@ -134,8 +144,10 @@ var LocalDb = map[string]map[string]bool{
 }
 var err error
 
-var geneDiseaseCN = make(map[string]string)
-var geneDiseaseEN = make(map[string]string)
+var (
+	geneDiseaseDb = make(map[string]map[string]string)
+	geneDb        = make(map[string][]map[string]string)
+)
 
 func main() {
 	t0 := time.Now()
@@ -149,6 +161,8 @@ func main() {
 	}
 
 	// parser config
+	// load Disease Info
+	loadDiseaseInfo(*diseaseInfo, *diseaseInfoSheet)
 	// load ORL
 	orl = simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
 
@@ -217,12 +231,6 @@ func main() {
 	b := simple_util.File2Decode(*aes, []byte(code2))
 	db = simple_util.Json2MapMap(b)
 
-	for key, item := range db {
-		transcript := strings.Split(key, ":")[0]
-		geneDiseaseCN[transcript] = item["Chinese disease name"]
-		geneDiseaseEN[transcript] = item["English disease name"]
-	}
-
 	var anno []map[string]string
 	var title []string
 
@@ -269,10 +277,23 @@ func main() {
 			line = append(line, item[k])
 		}
 		for _, k := range extraCols {
-			if !ok && k == "Chinese disease name" {
-				line = append(line, geneDiseaseCN[transcript])
+			if k == "Chinese disease name" {
+				if ok {
+					diseaeNameEN := target["English disease name"]
+					line = append(line, geneDiseaseDb[diseaeNameEN+":"+gene]["疾病名称-亚型"])
+				} else {
+					var diseaseName []string
+					for _, info := range geneDb[gene] {
+						diseaseName = append(diseaseName, info["疾病名称-亚型"])
+					}
+					line = append(line, strings.Join(diseaseName, "/"))
+				}
 			} else if !ok && k == "English disease name" {
-				line = append(line, geneDiseaseEN[transcript])
+				var diseaseName []string
+				for _, info := range geneDb[gene] {
+					diseaseName = append(diseaseName, info["Disease Name(Sub-phenotype)-位点疾病"])
+				}
+				line = append(line, strings.Join(diseaseName, "/"))
 			} else {
 				line = append(line, target[k])
 			}
