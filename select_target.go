@@ -114,7 +114,7 @@ var (
 		"diseaseInfo from excel",
 	)
 	diseaseInfoSheet = flag.String(
-		"diseaseInfo",
+		"diseaseInfoSheet",
 		"Sheet1",
 		"diseaseInfo sheet name",
 	)
