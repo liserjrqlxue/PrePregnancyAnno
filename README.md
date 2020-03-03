@@ -13,7 +13,7 @@ tar avxf source.tar
 cd PrePregnancyAnno
 ```
 # generate db and codeKey
-* firs set private key code1 and code2 to protect your database
+* first set private key code1 and code2 to protect your database
 ```
 code1=118b09d39a5d3ecd56f9bd4f351dd6d6
 code2=0e0760259f0826d18eb6e22988804617
