@@ -79,11 +79,6 @@ var (
 		filepath.Join(dbPath, "PP10.gene.list"),
 		"Supplementary Report PP10 gene list",
 	)
-	F8GeneList = flag.String(
-		"F8",
-		filepath.Join(dbPath, "F8.gene.list"),
-		"Supplementary Report F8 gene list",
-	)
 	extraColumnList = flag.String(
 		"extraCols",
 		filepath.Join(dbPath, "extraColumn.list"),
@@ -137,7 +132,6 @@ var AFList []string
 var LoF = make(map[string]bool)
 var PP10 = make(map[string]bool)
 var PP159 = make(map[string]bool)
-var F8 = make(map[string]bool)
 var err error
 
 var (
@@ -169,17 +163,11 @@ func main() {
 		LoF[function] = true
 	}
 
-	PP159Gene := simple_util.File2Array(*PP159GeneList)
-	for _, gene := range PP159Gene {
+	for _, gene := range simpleUtil.File2Array(*PP159GeneList) {
 		PP159[gene] = true
 	}
-	PP10Gene := simple_util.File2Array(*PP10GeneList)
-	for _, gene := range PP10Gene {
+	for _, gene := range simpleUtil.File2Array(*PP10GeneList) {
 		PP10[gene] = true
-	}
-	F8Gene := simple_util.File2Array(*F8GeneList)
-	for _, gene := range F8Gene {
-		F8[gene] = true
 	}
 
 	if *database == "" {
