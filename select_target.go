@@ -4,8 +4,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"flag"
-	"github.com/liserjrqlxue/crypto/aes"
-	"github.com/liserjrqlxue/simple-util"
 	"log"
 	"os"
 	"os/user"
@@ -13,6 +11,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/liserjrqlxue/crypto/aes"
+	simpleUtil "github.com/liserjrqlxue/simple-util"
 )
 
 // os
@@ -137,11 +138,6 @@ var LoF = make(map[string]bool)
 var PP10 = make(map[string]bool)
 var PP159 = make(map[string]bool)
 var F8 = make(map[string]bool)
-var LocalDb = map[string]map[string]bool{
-	"F8":    F8,
-	"PP10":  PP10,
-	"PP159": PP159,
-}
 var err error
 
 var (
@@ -164,11 +160,11 @@ func main() {
 	// load Disease Info
 	loadDiseaseInfo(*diseaseInfo, *diseaseInfoSheet)
 	// load ORL
-	orl = simple_util.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
+	orl = simpleUtil.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
 
-	AFList = simple_util.File2Array(*alleleFrequencyList)
+	AFList = simpleUtil.File2Array(*alleleFrequencyList)
 
-	LoFArray := simple_util.File2Array(*LoFList)
+	LoFArray := simpleUtil.File2Array(*LoFList)
 	for _, function := range LoFArray {
 		LoF[function] = true
 	}
@@ -189,55 +185,41 @@ func main() {
 	if *database == "" {
 		log.Println("empty database")
 	}
-	var DataBaseGeneList = make(map[string]bool)
-	var inDb = make(map[string]bool)
-	tag := strings.Split(*database, "+")
-	for _, k := range tag {
-		inDb[k] = true
-		db, ok := LocalDb[k]
-		if ok {
-			for k, v := range db {
-				if v {
-					DataBaseGeneList[k] = v
-				}
-			}
-		} else {
-			log.Printf("can not parser database:[%s]", k)
-		}
-	}
 
-	var extraCols = simple_util.File2Array(*extraColumnList)
+	var geneListDb, inDb = buildDatabaseGeneList(*database)
+
+	var extraCols = simpleUtil.File2Array(*extraColumnList)
 
 	var db = make(map[string]map[string]string)
 
 	// get code2 to decode db.aes to db
 	if *username == "" {
 		User, err := user.Current()
-		simple_util.CheckErr(err)
+		simpleUtil.CheckErr(err)
 		*username = User.Username
 	}
 	log.Printf("Username:\t%s\n", *username)
 	codeKeyByte, err = hex.DecodeString(*codeKey)
-	simple_util.CheckErr(err)
+	simpleUtil.CheckErr(err)
 	log.Printf("CodeKey:\t%x\n", codeKeyByte)
 
 	code3, err = AES.Encode([]byte(*username), code1)
-	simple_util.CheckErr(err)
-	md5sum := md5.Sum([]byte(code3))
+	simpleUtil.CheckErr(err)
+	var md5sum = md5.Sum(code3)
 	code3fix := hex.EncodeToString(md5sum[:])
 
 	code2, err = AES.Decode(codeKeyByte, []byte(code3fix))
-	simple_util.CheckErr(err)
-	b := simple_util.File2Decode(*aes, []byte(code2))
-	db = simple_util.Json2MapMap(b)
+	simpleUtil.CheckErr(err)
+	b := simpleUtil.File2Decode(*aes, code2)
+	db = simpleUtil.Json2MapMap(b)
 
 	var anno []map[string]string
 	var title []string
 
 	if isGz.MatchString(*varAnnos) {
-		anno, title = simple_util.Gz2MapArray(*varAnnos, "\t", skip)
+		anno, title = simpleUtil.Gz2MapArray(*varAnnos, "\t", skip)
 	} else {
-		anno, title = simple_util.File2MapArray(*varAnnos, "\t", skip)
+		anno, title = simpleUtil.File2MapArray(*varAnnos, "\t", skip)
 	}
 
 	var header = append(title, extraCols...)
@@ -300,7 +282,7 @@ func main() {
 		}
 
 		var isOutside bool
-		if !ok && LoF[item["Function"]] && simple_util.CheckAFAllLowThen(item, AFList, *alleleFrequencyThreshold, true) {
+		if !ok && LoF[item["Function"]] && simpleUtil.CheckAFAllLowThen(item, AFList, *alleleFrequencyThreshold, true) {
 			isOutside = true
 		}
 
@@ -339,7 +321,7 @@ func main() {
 				reportMap["Standard"].addArray(line)
 			}
 		} else {
-			if *outside && isOutside && DataBaseGeneList[gene] {
+			if *outside && isOutside && geneListDb[gene] {
 				reportMap["Outside"].addArray(line)
 			}
 		}
