@@ -36,7 +36,7 @@ func (report *Report) addArray(array []string) {
 func (report *Report) save() {
 	simple_util.CheckErr(report.Tsv.Close())
 	simple_util.CheckErr(report.Sheet.File.Save(report.Prefix + ".xlsx"))
-	log.Printf("output %s:%d records\n\t[%s.tsv]\n\t[%s.xlsx]\n", report.Tag, report.count, report.Prefix, report.Prefix)
+	log.Printf("output %s:%d records\n", report.Tag, report.count)
 }
 
 func createReport(tag, sheetName, prefix string) (report *Report) {
