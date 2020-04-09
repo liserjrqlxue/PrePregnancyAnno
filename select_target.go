@@ -249,8 +249,10 @@ func main() {
 		for _, k := range extraCols {
 			if k == "Chinese disease name" {
 				if ok {
-					diseaeNameEN := target["English disease name"]
-					line = append(line, geneDiseaseDb[diseaeNameEN+":"+gene]["疾病名称-亚型"])
+					diseaseNameENs := strings.Split(target["English disease name"], "[n]")
+					for _, diseaseNameEN := range diseaseNameENs {
+						line = append(line, geneDiseaseDb[diseaseNameEN+":"+gene]["疾病名称-亚型"])
+					}
 				} else {
 					var diseaseName []string
 					for _, info := range geneDb[gene] {
