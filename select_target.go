@@ -247,21 +247,19 @@ func main() {
 			line = append(line, item[k])
 		}
 		for _, k := range extraCols {
+			var diseaseName []string
 			if k == "Chinese disease name" {
 				if ok {
-					diseaseNameENs := strings.Split(target["English disease name"], "\n")
-					for _, diseaseNameEN := range diseaseNameENs {
-						line = append(line, geneDiseaseDb[diseaseNameEN+":"+gene]["疾病名称-亚型"])
+					for _, diseaseNameEN := range strings.Split(target["English disease name"], "\n") {
+						diseaseName = append(diseaseName, geneDiseaseDb[diseaseNameEN+":"+gene]["疾病名称-亚型"])
 					}
 				} else {
-					var diseaseName []string
 					for _, info := range geneDb[gene] {
 						diseaseName = append(diseaseName, info["疾病名称-亚型"])
 					}
-					line = append(line, strings.Join(diseaseName, "/"))
 				}
+				line = append(line, strings.Join(diseaseName, "/"))
 			} else if !ok && k == "English disease name" {
-				var diseaseName []string
 				for _, info := range geneDb[gene] {
 					diseaseName = append(diseaseName, info["Disease Name(Sub-phenotype)-位点疾病"])
 				}
