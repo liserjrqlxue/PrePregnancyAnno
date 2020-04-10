@@ -253,12 +253,13 @@ func main() {
 					for _, diseaseNameEN := range strings.Split(target["English disease name"], "\n") {
 						diseaseName = append(diseaseName, geneDiseaseDb[diseaseNameEN+":"+gene]["疾病名称-亚型"])
 					}
+					line = append(line, strings.Join(diseaseName, "\n"))
 				} else {
 					for _, info := range geneDb[gene] {
 						diseaseName = append(diseaseName, info["疾病名称-亚型"])
 					}
+					line = append(line, strings.Join(diseaseName, "/"))
 				}
-				line = append(line, strings.Join(diseaseName, "/"))
 			} else if !ok && k == "English disease name" {
 				for _, info := range geneDb[gene] {
 					diseaseName = append(diseaseName, info["Disease Name(Sub-phenotype)-位点疾病"])
