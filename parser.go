@@ -8,10 +8,13 @@ import (
 	simpleUtil "github.com/liserjrqlxue/simple-util"
 )
 
-func loadDiseaseInfo(excel, sheet string) {
-	_, mapArray := simpleUtil.Sheet2MapArray(excel, sheet)
+func loadDiseaseInfo(excel, inDb, outDb string) {
+	_, mapArray := simpleUtil.Sheet2MapArray(excel, inDb)
 	for _, item := range mapArray {
 		geneDiseaseDb[item["Disease Name(Sub-phenotype)-位点疾病"]+":"+item["*基因名称"]] = item
+	}
+	_, mapArray = simpleUtil.Sheet2MapArray(excel, outDb)
+	for _, item := range mapArray {
 		geneDb[item["*基因名称"]] = append(geneDb[item["*基因名称"]], item)
 	}
 	return

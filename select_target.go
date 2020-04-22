@@ -106,13 +106,18 @@ var (
 	)
 	diseaseInfo = flag.String(
 		"diseaseInfo",
-		filepath.Join(dbPath, "孕150基因-疾病-发病率-干预list-20191126-V3.xlsx"),
+		filepath.Join(dbPath, "孕150基因-疾病 -发病率-干预list-20200302-V3-To韩瑞-修改后N-补充库外配置文件-0421.xlsx"),
 		"diseaseInfo from excel",
 	)
-	diseaseInfoSheet = flag.String(
-		"diseaseInfoSheet",
+	diseaseInDb = flag.String(
+		"diseaseInDb",
 		"Sheet1",
-		"diseaseInfo sheet name",
+		"diseaseInfo in db sheet name",
+	)
+	diseaseOutDb = flag.String(
+		"diseaseOutDb",
+		"Sheet1",
+		"diseaseInfo out db sheet name",
 	)
 )
 
@@ -152,7 +157,7 @@ func main() {
 
 	// parser config
 	// load Disease Info
-	loadDiseaseInfo(*diseaseInfo, *diseaseInfoSheet)
+	loadDiseaseInfo(*diseaseInfo, *diseaseInDb, *diseaseOutDb)
 	// load ORL
 	orl = simpleUtil.File2MapMap(*officialReportList, "Transcript:cHGVS", "\t")
 
@@ -258,13 +263,13 @@ func main() {
 					for _, info := range geneDb[gene] {
 						diseaseName = append(diseaseName, info["疾病名称-亚型"])
 					}
-					line = append(line, strings.Join(diseaseName, "/"))
+					line = append(line, strings.Join(diseaseName, "\n"))
 				}
 			} else if !ok && k == "English disease name" {
 				for _, info := range geneDb[gene] {
 					diseaseName = append(diseaseName, info["Disease Name(Sub-phenotype)-位点疾病"])
 				}
-				line = append(line, strings.Join(diseaseName, "/"))
+				line = append(line, strings.Join(diseaseName, "\n"))
 			} else {
 				line = append(line, target[k])
 			}
