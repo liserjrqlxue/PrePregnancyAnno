@@ -111,12 +111,12 @@ var (
 	)
 	diseaseInDb = flag.String(
 		"diseaseInDb",
-		"Sheet1",
+		"孕150库内位点配置",
 		"diseaseInfo in db sheet name",
 	)
 	diseaseOutDb = flag.String(
 		"diseaseOutDb",
-		"Sheet1",
+		"库外位点配置文件",
 		"diseaseInfo out db sheet name",
 	)
 )
