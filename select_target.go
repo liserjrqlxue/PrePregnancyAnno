@@ -247,10 +247,6 @@ func main() {
 		format(item)
 
 		target, ok := db[key]
-		var line []string
-		for _, k := range title {
-			line = append(line, item[k])
-		}
 		for _, k := range extraCols {
 			var diseaseName []string
 			if k == "Chinese disease name" {
@@ -258,21 +254,29 @@ func main() {
 					for _, diseaseNameEN := range strings.Split(target["English disease name"], "\n") {
 						diseaseName = append(diseaseName, geneDiseaseDb[diseaseNameEN+":"+gene]["疾病名称-亚型"])
 					}
-					line = append(line, strings.Join(diseaseName, "\n"))
 				} else {
 					for _, info := range geneDb[gene] {
 						diseaseName = append(diseaseName, info["疾病名称-亚型"])
 					}
-					line = append(line, strings.Join(diseaseName, "\n"))
 				}
+				item[k] = strings.Join(diseaseName, "\n")
 			} else if !ok && k == "English disease name" {
 				for _, info := range geneDb[gene] {
 					diseaseName = append(diseaseName, info["Disease Name(Sub-phenotype)-位点疾病"])
 				}
-				line = append(line, strings.Join(diseaseName, "\n"))
+				item[k] = strings.Join(diseaseName, "\n")
 			} else {
-				line = append(line, target[k])
+				item[k] = target[k]
 			}
+		}
+		updateDisease(ok, item, geneDiseaseDb, geneDb)
+
+		var line []string
+		for _, k := range title {
+			line = append(line, item[k])
+		}
+		for _, k := range extraCols {
+			line = append(line, item[k])
 		}
 
 		var isOutside bool
@@ -341,4 +345,30 @@ func format(item map[string]string) {
 		item["RepeatTag"] = "."
 	}
 	item["Zygosity"] = strings.Split(item["Zygosity"], "-")[0]
+}
+
+func updateDisease(ok bool, item map[string]string, geneDiseaseDb map[string]map[string]string, geneDb map[string][]map[string]string) {
+	var gene = item["Gene Symbol"]
+	var 疾病名称, 疾病背景, 治疗与干预, 发病率 []string
+	if ok {
+		for _, diseaseNameEN := range strings.Split(item["English disease name"], "\n") {
+			var key = diseaseNameEN + ":" + gene
+			var diseaseInfo = geneDiseaseDb[key]
+			疾病名称 = append(疾病名称, diseaseInfo["疾病名称-亚型"])
+			疾病背景 = append(疾病背景, diseaseInfo["疾病背景（CH）"])
+			治疗与干预 = append(治疗与干预, diseaseInfo["治疗与干预（中文）"])
+			发病率 = append(发病率, diseaseInfo["发病率(中文)"])
+		}
+	} else {
+		for _, diseaseInfo := range geneDb[gene] {
+			疾病名称 = append(疾病名称, diseaseInfo["疾病名称-亚型"])
+			疾病背景 = append(疾病背景, diseaseInfo["疾病背景（CH）"])
+			治疗与干预 = append(治疗与干预, diseaseInfo["治疗与干预（中文）"])
+			发病率 = append(发病率, diseaseInfo["发病率(中文)"])
+		}
+	}
+	item["疾病名称-亚型"] = strings.Join(疾病名称, "\n")
+	item["疾病背景（CH）"] = strings.Join(疾病背景, "\n")
+	item["治疗与干预（中文）"] = strings.Join(治疗与干预, "\n")
+	item["发病率(中文)"] = strings.Join(发病率, "\n")
 }
