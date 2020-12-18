@@ -201,7 +201,7 @@ func main() {
 	log.Printf("Username:\t%s\n", *username)
 	codeKeyByte, err = hex.DecodeString(*codeKey)
 	simpleUtil.CheckErr(err)
-	log.Printf("CodeKey:\t%x\n", codeKeyByte)
+	log.Printf("CodeKey:\t%x************************************************%x\n", codeKeyByte[0:4],codeKeyByte[len(codeKeyByte)-4:])
 
 	code3, err = AES.Encode([]byte(*username), code1)
 	simpleUtil.CheckErr(err)
