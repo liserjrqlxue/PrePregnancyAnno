@@ -29,12 +29,12 @@ mkdir -p ../db
 
 cd ..
 ```
-* generate codeKey for users
+* generate codeKey for current user
 ```
 cd generateKey
 go build
 
-./generateKey -code1 $code1 -code2 $code2 -user USERNAME
+./generateKey -code1 $code1 -code2 $code2 # -user USERNAME
 # save output codeKey to the USERNAME:
 # Usr     DESKTOP-1S2D31U\A
 # Code1   118b09d39a5d3ecd56f9bd4f351dd6d6
@@ -43,6 +43,10 @@ go build
 # codeKey 610805cd69cfd3aa9ea23613b524c5a8807398172ef7011eac998442c62fb878
 
 cd ..
+```
+* use code1 to build `PrePregnancyAnno`
+```
+go build -ldflags "-s -w -X 'main.code=$code1'"
 ```
 * use the codeKey of your username to filter your anno and add extra db column 
 ```
