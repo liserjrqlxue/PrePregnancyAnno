@@ -111,7 +111,7 @@ var (
 	)
 	diseaseInfo = flag.String(
 		"diseaseInfo",
-		filepath.Join(dbPath, "孕150基因-疾病 -发病率-干预list-20200302-V3-To韩瑞-修改后N-补充库外配置文件-0421.xlsx"),
+		filepath.Join(dbPath, "Y150_gene_disease_list.xlsx"),
 		"diseaseInfo from excel",
 	)
 	diseaseInDb = flag.String(
