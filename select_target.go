@@ -131,7 +131,8 @@ var (
 	isGz = regexp.MustCompile(`\.gz(ip)?$`)
 )
 
-var code1 = []byte("118b09d39a5d3ecd56f9bd4f351dd6d6")
+var code = "118b09d39a5d3ecd56f9bd4f351dd6d6"
+var code1 = []byte(code)
 var code2, code3, codeKeyByte []byte
 
 var reportArray []string
