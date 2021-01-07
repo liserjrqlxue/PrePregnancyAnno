@@ -1,4 +1,8 @@
 # PrePregnancyAnno
+
+[![GoDoc](https://godoc.org/github.com/liserjrqlxue/PrePregnancyAnno?status.svg)](https://pkg.go.dev/github.com/liserjrqlxue/PrePregnancyAnno) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/liserjrqlxue/PrePregnancyAnno)](https://goreportcard.com/report/github.com/liserjrqlxue/PrePregnancyAnno)
+
 annotation PrePregnancy
 
 # get source
