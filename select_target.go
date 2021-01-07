@@ -200,6 +200,7 @@ func decodeDb() map[string]map[string]string {
 	codeKeyByte, err = hex.DecodeString(*codeKey)
 	simpleUtil.CheckErr(err)
 	log.Printf("CodeKey:\t%x************************************************%x\n", codeKeyByte[0:4], codeKeyByte[len(codeKeyByte)-4:])
+	log.Printf("Code:\t%s************************%s\n", string(code[0:4]), string(code[len(code)-4:]))
 
 	code3, err = AES.Encode([]byte(*username), code1)
 	simpleUtil.CheckErr(err)
