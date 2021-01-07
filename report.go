@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-type Report struct {
+type report struct {
 	Tag, Prefix string
 	Sheet       *xlsx.Sheet
 	Tsv         *os.File
@@ -19,39 +19,56 @@ type Report struct {
 	count       int64
 }
 
-func (report *Report) checkError(msg ...string) {
-	simple_util.CheckErr(report.err, msg...)
+func (r *report) checkError(msg ...string) {
+	simple_util.CheckErr(r.err, msg...)
 }
 
-func (report *Report) addArray(array []string) {
-	row := report.Sheet.AddRow()
+func (r *report) addArray(array []string) {
+	row := r.Sheet.AddRow()
 	for _, str := range array {
 		row.AddCell().SetString(str)
 	}
-	_, report.err = fmt.Fprintln(report.Tsv, escapeLF(strings.Join(array, "\t")))
-	report.checkError()
-	report.count++
+	_, r.err = fmt.Fprintln(r.Tsv, escapeLF(strings.Join(array, "\t")))
+	r.checkError()
+	r.count++
 }
 
-func (report *Report) save() {
-	simple_util.CheckErr(report.Tsv.Close())
-	simple_util.CheckErr(report.Sheet.File.Save(report.Prefix + ".xlsx"))
-	log.Printf("output %s:%d records\n", report.Tag, report.count)
+func (r *report) save() {
+	simple_util.CheckErr(r.Tsv.Close())
+	simple_util.CheckErr(r.Sheet.File.Save(r.Prefix + ".xlsx"))
+	log.Printf("output %s:%d records\n", r.Tag, r.count)
 }
 
-func createReport(tag, sheetName, prefix string) (report *Report) {
-	report = &Report{
+func createReport(tag, sheetName, prefix string) (r *report) {
+	r = &report{
 		Tag:       tag,
 		sheetName: sheetName,
 	}
-	report.Prefix = strings.Join([]string{prefix, tag}, ".")
-	report.Tsv, report.err = os.Create(report.Prefix + ".tsv")
-	report.checkError()
-	report.Sheet, report.err = xlsx.NewFile().AddSheet(report.sheetName)
-	report.checkError()
+	r.Prefix = strings.Join([]string{prefix, tag}, ".")
+	r.Tsv, r.err = os.Create(r.Prefix + ".tsv")
+	r.checkError()
+	r.Sheet, r.err = xlsx.NewFile().AddSheet(r.sheetName)
+	r.checkError()
 	return
 }
 
 func escapeLF(str string) string {
 	return strings.Replace(str, "\n", "[n]", -1)
+}
+
+func createReports(header []string) {
+	var tags = []string{"OfficialReport", "PP159", "PP159.Outside", "PP10", "PP10.Outside", "Standard"}
+	if *outside {
+		tags = append(tags, "Outside")
+	}
+	if *all {
+		tags = append(tags, "all")
+	}
+	// create report
+	for _, tag := range tags {
+		reportMap[tag] = createReport(tag, *sheetName, *prefix)
+		reportMap[tag].addArray(header)
+		reportMap[tag].count--
+		reportArray = append(reportArray, tag)
+	}
 }
