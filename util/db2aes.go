@@ -2,10 +2,18 @@ package main
 
 import (
 	"flag"
-	"github.com/liserjrqlxue/simple-util"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/liserjrqlxue/goUtil/fmtUtil"
+	"github.com/liserjrqlxue/goUtil/jsonUtil"
+	"github.com/liserjrqlxue/goUtil/osUtil"
+	"github.com/liserjrqlxue/goUtil/simpleUtil"
+	"github.com/liserjrqlxue/goUtil/textUtil"
+	simple_util "github.com/liserjrqlxue/simple-util"
+
+	"github.com/liserjrqlxue/crypto/aes"
 )
 
 // os
@@ -60,6 +68,11 @@ var (
 		filepath.Join(dbPath, "extraColumn.list"),
 		"columns of lite db",
 	)
+	extract = flag.String(
+		"extract",
+		"",
+		"extract tsv, column names split by comma",
+	)
 )
 
 func main() {
@@ -75,7 +88,20 @@ func main() {
 	_, db := simple_util.Sheet2MapArray(*excel, *sheet)
 	var allDb = make(map[string]map[string]string)
 	var liteDb = make(map[string]map[string]string)
-	var liteCols = simple_util.File2Array(*liteColumnList)
+	var liteCols = textUtil.File2Array(*liteColumnList)
+
+	var extractFile *os.File
+	var extractCols []string
+	if *extract != "" {
+		extractFile = osUtil.Create(*prefix + ".mut.tsv")
+		extractCols = strings.Split(*extract, ",")
+		fmtUtil.FprintStringArray(extractFile, extractCols, "\t")
+	}
+	defer func() {
+		if *extract != "" {
+			simpleUtil.DeferClose(extractFile)
+		}
+	}()
 
 	for _, item := range db {
 		var keyValues []string
@@ -89,30 +115,27 @@ func main() {
 			lite[k] = item[k]
 		}
 		liteDb[mainKey] = lite
+		if *extract != "" {
+			var strArray []string
+			for _, col := range extractCols {
+				strArray = append(strArray, item[col])
+			}
+			fmtUtil.FprintStringArray(extractFile, strArray, "\t")
+		}
 	}
 
-	liteB, err := simple_util.JsonIndent(liteDb, "", "\t")
-	simple_util.CheckErr(err)
+	var liteB = simpleUtil.HandleError(jsonUtil.JsonIndent(liteDb, "", "\t")).([]byte)
 	if *json {
-		err = simple_util.Json2file(liteB, *prefix+".lite.json")
-		simple_util.CheckErr(err)
+		simpleUtil.CheckErr(jsonUtil.Json2file(liteB, *prefix+".lite.json"))
 	}
-	liteF, err := os.Create(*prefix + ".lite.json.aes")
-	defer simple_util.DeferClose(liteF)
-	simple_util.CheckErr(err)
-	simple_util.Encode2File(liteF, liteB, []byte(*codeKey))
+	AES.Encode2File(*prefix+".lite.json.aes", liteB, []byte(*codeKey))
 
 	if *all {
-		allB, err := simple_util.JsonIndent(allDb, "", "\t")
-		simple_util.CheckErr(err)
+		var allB = simpleUtil.HandleError(jsonUtil.JsonIndent(allDb, "", "\t")).([]byte)
 		if *json {
-			err = simple_util.Json2file(allB, *prefix+".all.json")
-			simple_util.CheckErr(err)
+			simpleUtil.CheckErr(jsonUtil.Json2file(allB, *prefix+".all.json"))
 		}
-		allF, err := os.Create(*prefix + ".all.json.aes")
-		defer simple_util.DeferClose(allF)
-		simple_util.CheckErr(err)
-		simple_util.Encode2File(allF, allB, []byte(*codeKey))
+		AES.Encode2File(*prefix+".all.json.aes", allB, []byte(*codeKey))
 	}
 
 }
