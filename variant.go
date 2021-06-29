@@ -117,18 +117,28 @@ func cHgvsAlt(cHgvs string) string {
 }
 func loadVar(item map[string]string, title []string, db map[string]map[string]string, dbSep string) {
 	var gene = item["Gene Symbol"]
-	var key = item["Transcript"] + ":" + cHgvsAlt(item["cHGVS"])
+	var key1 = item["Transcript"] + ":" + item["cHGVS"]
+	var key2 = item["Transcript"] + ":" + cHgvsAlt(item["cHGVS"])
 	format(item)
 
-	target, ok := db[key]
+	target, ok := db[key1]
+	if !ok {
+		target, ok = db[key2]
+	}
 	updateDisease(item, target, ok)
 	addDiseaseColumns(ok, addDisCols, item, geneDiseaseDb, geneDb)
 
 	var line = getVals(item, append(title, extraCols...))
 	var isOutside = isOutside(item, ok)
 
-	if _, inORL := orl[key]; inORL {
+	_, inORL := orl[key1]
+	if inORL {
 		reportMap["OfficialReport"].addArray(line)
+	} else {
+		_, inORL = orl[key2]
+		if inORL {
+			reportMap["OfficialReport"].addArray(line)
+		}
 	}
 	if ok {
 		if pp159[gene] {
