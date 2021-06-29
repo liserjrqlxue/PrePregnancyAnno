@@ -105,9 +105,19 @@ func getVals(item map[string]string, keys []string) (vals []string) {
 	return
 }
 
+var (
+	cHGVSalt = regexp.MustCompile(`alt: (\S+) \)`)
+)
+
+func cHgvsAlt(cHgvs string) string {
+	if m := cHGVSalt.FindStringSubmatch(cHgvs); m != nil {
+		return m[1]
+	}
+	return cHgvs
+}
 func loadVar(item map[string]string, title []string, db map[string]map[string]string, dbSep string) {
 	var gene = item["Gene Symbol"]
-	var key = item["Transcript"] + ":" + item["cHGVS"]
+	var key = item["Transcript"] + ":" + cHgvsAlt(item["cHGVS"])
 	format(item)
 
 	target, ok := db[key]
