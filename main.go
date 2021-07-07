@@ -43,6 +43,11 @@ var (
 		"PP159+F8",
 		"databases to use for StandardReport,join with '+'",
 	)
+	productCode = flag.String(
+		"productCode",
+		"",
+		"use productCode to find gene.list, override -database for standard and outside",
+	)
 	aes = flag.String(
 		"aes",
 		filepath.Join(dbPath, "db.lite.json.aes"),
@@ -180,10 +185,14 @@ func init() {
 	for _, gene := range simpleUtil.File2Array(*PP10GeneList) {
 		pp10[gene] = true
 	}
-	if *database == "" {
-		log.Println("empty database")
+	if *productCode != "" {
+		geneListDb, inDb = buildDatabaseGeneList(*productCode)
+	} else {
+		geneListDb, inDb = buildDatabaseGeneList(*database)
+		if *database == "" {
+			log.Println("empty database")
+		}
 	}
-	geneListDb, inDb = buildDatabaseGeneList(*database)
 	extraCols = simpleUtil.File2Array(*extraColumnList)
 	addDisCols = simpleUtil.File2Array(*additionalDiseaseColumnList)
 }
