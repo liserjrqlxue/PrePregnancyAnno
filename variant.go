@@ -90,7 +90,7 @@ func isOutside(item map[string]string, inDb bool) bool {
 }
 
 func isStandard(db map[string]string, dbSep string) bool {
-	if geneListDb[db["Gene Symbol"]] {
+	if *productCode != "" && geneListDb[db["Gene Symbol"]] {
 		return true
 	}
 	for _, t := range strings.Split(db["Database"], dbSep) {
